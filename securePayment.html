@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Payment Form JS</title>
+    <style>
+        .payment-form {
+            width: 25rem;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f9f9f9a3;
+            margin-top: 4rem;
+
+
+        }
+
+        .secure-field-container {
+            height: 15px;
+            padding: 4px 5px 12px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .error-message {
+            color: #d9534f;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: inline-block;
+            margin-left: 10px;
+            border: 3px solid rgba(255, 255, 255, .3);
+            border-radius: 50%;
+            border-top-color: white;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            flex: 1;
+        }
+
+        .expiry-fields {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #0052a3;
+        }
+
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+
+        input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .input:focus {
+            border-color: #007BFF;
+            outline: none;
+            box-shadow: 0 0 3px rgba(0, 123, 255, 0.5);
+        }
+
+        select {
+            padding: 8px 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: white;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        select:focus {
+            border-color: #007BFF;
+            outline: none;
+            box-shadow: 0 0 3px rgba(0, 123, 255, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="payment-form">
+        <h1>Secure Payment</h1>
+
+        <div class="payment-method-selector">
+            <label>Payment Method:</label>
+            <select id="paymentMethod">
+                <option value="card">Credit/Debit Card</option>
+                <option value="bank">Bank Transfer</option>
+            </select>
+        </div>
+
+        <!-- Credit Card Payment Method -->
+        <div id="cardPayment" class="payment-method active">
+            <div class="form-group">
+                <label for="cardholderName">Cardholder Name</label>
+                <input type="text" id="cardholderName" name="cardholderName" required>
+                <div id="cardholderNameError" class="error-message"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="card-number-placeholder">Card Number</label>
+                <div id="card-number-placeholder" class="secure-field-container" style="width: 100%; max-width: 350px;">
+                </div>
+                <div id="cardNumberError" class="error-message"></div>
+            </div>
+
+            <div style="display: flex; gap: 20px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Expiration Date</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="expiryMonth" style="flex: 1; padding: 10px;">
+                            <option value="">Month</option>
+                            <option value="01">01</option>
+                            <option value="02">02</option>
+                            <!-- Add all months -->
+                        </select>
+                        <select id="expiryYear" style="flex: 1; padding: 10px;">
+                            <option value="">Year</option>
+                            <option value="23">2023</option>
+                            <option value="24">2024</option>
+                            <!-- Add coming years -->
+                        </select>
+                    </div>
+                    <div id="expiryDateError" class="error-message"></div>
+                </div>
+
+                <div class="form-group" style="flex: 1;">
+                    <label for="cvv-placeholder">CVV</label>
+                    <div id="cvv-placeholder" class="secure-field-container" style="width: 100px;"></div>
+                    <div id="cvvError" class="error-message"></div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <button type="button" id="submitPayment" disabled>
+            Submit Payment
+            <span id="loadingIndicator" class="loading" style="display: none;"></span>
+        </button>
+    </div>
+
+    <!-- Datatrans Secure Fields SDK -->
+    <script src="https://pay.sandbox.datatrans.com/upp/payment/js/secure-fields-2.0.0.js"></script>
+
+    <!-- jQuery (for simplicity in this example) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- RudderStack Analytics -->
+    <script type="text/javascript">
+        !function () {
+            "use strict"; window.RudderSnippetVersion = "3.0.60"; var e = "rudderanalytics"; window[e] || (window[e] = [])
+                ; var rudderanalytics = window[e]; if (Array.isArray(rudderanalytics)) {
+                    if (true === rudderanalytics.snippetExecuted && window.console && console.error) {
+                        console.error("RudderStack JavaScript SDK snippet included more than once.")
+                    } else {
+                        rudderanalytics.snippetExecuted = true,
+                            window.rudderAnalyticsBuildType = "legacy"; var sdkBaseUrl = "https://cdn.rudderlabs.com"; var sdkVersion = "v3"
+                            ; var sdkFileName = "rsa.min.js"; var scriptLoadingMode = "async"
+                            ; var r = ["setDefaultInstanceKey", "load", "ready", "page", "track", "identify", "alias", "group", "reset", "setAnonymousId", "startSession", "endSession", "consent"]
+                            ; for (var n = 0; n < r.length; n++) {
+                                var t = r[n]; rudderanalytics[t] = function (r) {
+                                    return function () {
+                                        var n
+                                            ; Array.isArray(window[e]) ? rudderanalytics.push([r].concat(Array.prototype.slice.call(arguments))) : null === (n = window[e][r]) || void 0 === n || n.apply(window[e], arguments)
+                                    }
+                                }(t)
+                            } try {
+                                new Function('class Test{field=()=>{};test({prop=[]}={}){return prop?(prop?.property??[...prop]):import("");}}'),
+                                    window.rudderAnalyticsBuildType = "modern"
+                            } catch (i) { } var d = document.head || document.getElementsByTagName("head")[0]
+                            ; var o = document.body || document.getElementsByTagName("body")[0]; window.rudderAnalyticsAddScript = function (e, r, n) {
+                                var t = document.createElement("script"); t.src = e, t.setAttribute("data-loader", "RS_JS_SDK"), r && n && t.setAttribute(r, n),
+                                    "async" === scriptLoadingMode ? t.async = true : "defer" === scriptLoadingMode && (t.defer = true),
+                                    d ? d.insertBefore(t, d.firstChild) : o.insertBefore(t, o.firstChild)
+                            }, window.rudderAnalyticsMount = function () {
+                                !function () {
+                                    if ("undefined" == typeof globalThis) {
+                                        var e; var r = function getGlobal() {
+                                            return "undefined" != typeof self ? self : "undefined" != typeof window ? window : null
+                                        }(); r && Object.defineProperty(r, "globalThis", {
+                                            value: r, configurable: true
+                                        })
+                                    }
+                                }(), window.rudderAnalyticsAddScript("".concat(sdkBaseUrl, "/").concat(sdkVersion, "/").concat(window.rudderAnalyticsBuildType, "/").concat(sdkFileName), "data-rsa-write-key", "2vr7PPXwPCYuakSWcB1IVvpBddS")
+                            },
+                                "undefined" == typeof Promise || "undefined" == typeof globalThis ? window.rudderAnalyticsAddScript("https://polyfill-fastly.io/v3/polyfill.min.js?version=3.111.0&features=Symbol%2CPromise&callback=rudderAnalyticsMount") : window.rudderAnalyticsMount()
+                            ; var loadOptions = {}; rudderanalytics.load("2vr7PPXwPCYuakSWcB1IVvpBddS", "https://crossworkevuht.dataplane.rudderstack.com", loadOptions)
+                    }
+                }
+        }();
+        // Track page load
+        rudderanalytics.track('Payment Page Loaded', {
+            paymentMethods: ['card', 'bank'],
+            integration: 'Datatrans Secure Fields'
+        });
+    </script>
+
+    <script>
+        // Initialize Datatrans Secure Fields
+        var secureFields = new SecureFields();
+        var cardSecureFields, bankSecureFields;
+        var isFormValid = false;
+
+        // Initialize payment form
+        $(document).ready(function () {
+            // Initialize secure fields based on payment method
+            initializeSecureFields();
+
+            // Handle payment method change
+            $('#paymentMethod').change(function () {
+                $('.payment-method').removeClass('active');
+                const method = $(this).val();
+                $(`#${method}Payment`).addClass('active');
+
+                // Track payment method selection
+                rudderanalytics.track('Payment Method Selected', {
+                    method: method
+                });
+
+                // Reinitialize validation
+                validateForm();
+            });
+
+            // Handle form submission
+            $('#submitPayment').click(function () {
+                if (!isFormValid) return;
+
+                // Track submission attempt
+                rudderanalytics.track('Payment Submission Attempted', {
+                    method: $('#paymentMethod').val()
+                });
+
+                // Show loading indicator
+                $('#loadingIndicator').show();
+                $('#submitPayment').prop('disabled', true);
+
+                // Get expiration date for card payments
+                const expm = $('#expiryMonth').val();
+                const expy = $('#expiryYear').val();
+
+                // Submit to Datatrans based on payment method
+                if ($('#paymentMethod').val() === 'card') {
+                    secureFields.submit({
+                        expm: expm,
+                        expy: expy,
+                        usage: "SIMPLE"
+                    });
+                } else {
+                    // For bank transfers, we might handle differently
+                    // This is just a placeholder for the example
+                    setTimeout(function () {
+                        secureFields.trigger('success', {
+                            transactionId: 'bank_' + Date.now()
+                        });
+                    }, 1000);
+                }
+            });
+
+            // Handle form field changes for validation
+            $('#cardholderName, #expiryMonth, #expiryYear').on('input change', validateForm);
+        });
+
+        function initializeSecureFields() {
+            // Initialize card secure fields
+            secureFields.initTokenize("1100007006", {
+                cardNumber: "card-number-placeholder",
+                cvv: "cvv-placeholder"
+            });
+
+            // Initialize bank secure fields
+            secureFields.initTokenize("1100007006", {
+                iban: "iban-placeholder",
+                accountNumber: "account-number-placeholder",
+                branchCode: "branch-code-placeholder"
+            });
+
+            // Set up event listeners
+            secureFields.on("change", function (event) {
+                // Track field interactions
+                rudderanalytics.track('Secure Field Interaction', {
+                    field: event.fieldType,
+                    status: event.status
+                });
+
+                validateForm();
+            });
+
+            secureFields.on("success", function (data) {
+                $('#loadingIndicator').hide();
+
+                // Track successful tokenization
+                rudderanalytics.track('Payment Tokenization Success', {
+                    transactionId: data.transactionId,
+                    method: $('#paymentMethod').val()
+                });
+
+                // In a real implementation, you would submit the form to your server
+                // with the transactionId and other non-sensitive data
+                console.log("Tokenization successful. Transaction ID:", data.transactionId);
+
+                // Simulate server processing
+                setTimeout(function () {
+                    rudderanalytics.track('Payment Processing Complete', {
+                        transactionId: data.transactionId,
+                        status: 'success'
+                    });
+
+                    alert('Payment processed successfully! Transaction ID: ' + data.transactionId);
+                }, 1500);
+            });
+
+            secureFields.on("error", function (error) {
+                $('#loadingIndicator').hide();
+                $('#submitPayment').prop('disabled', false);
+
+                // Track tokenization error
+                rudderanalytics.track('Payment Tokenization Failed', {
+                    error: error.message,
+                    code: error.code,
+                    method: $('#paymentMethod').val()
+                });
+
+                // Show appropriate error message
+                let errorMessage = "Payment processing failed. Please check your details.";
+                if (error.fieldType) {
+                    $(`#${error.fieldType}Error`).text(error.message);
+                } else {
+                    alert(errorMessage);
+                }
+            });
+        }
+
+        function validateForm() {
+            const method = $('#paymentMethod').val();
+            let isValid = true;
+
+            // Clear previous errors
+            $('.error-message').text('');
+
+            if (method === 'card') {
+                // Validate cardholder name
+                if (!$('#cardholderName').val().trim()) {
+                    $('#cardholderNameError').text('Cardholder name is required');
+                    isValid = false;
+                    rudderanalytics.track('Form Validation Error', {
+                        field: 'cardholderName',
+                        error: 'Required field missing'
+                    });
+                }
+
+                // Validate expiration date
+                if (!$('#expiryMonth').val() || !$('#expiryYear').val()) {
+                    $('#expiryDateError').text('Expiration date is required');
+                    isValid = false;
+                    rudderanalytics.track('Form Validation Error', {
+                        field: 'expiryDate',
+                        error: 'Required field missing'
+                    });
+                }
+
+                // Additional validation could be added here for other fields
+            }
+
+            // In a real implementation, we would also check the secure fields status
+            // For this example, we'll assume they're valid if we got this far
+
+            // Enable/disable submit button based on validation
+            isFormValid = isValid;
+            $('#submitPayment').prop('disabled', !isValid);
+
+            if (isValid) {
+                rudderanalytics.track('Form Validation Passed', {
+                    method: method
+                });
+            }
+
+            return isValid;
+        }
+
+        // Track JavaScript errors
+        window.onerror = function (message, source, lineno, colno, error) {
+            rudderanalytics.track('JavaScript Error', {
+                message: message,
+                source: source,
+                line: lineno,
+                column: colno,
+                error: error ? error.stack : null
+            });
+        };
+        // Example of when you might destroy:
+        window.addEventListener('beforeunload', function () {
+            secureFields.destroy();
+        });
+    </script>
+</body>
+
+</html>
